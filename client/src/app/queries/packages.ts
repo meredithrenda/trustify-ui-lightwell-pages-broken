@@ -8,6 +8,7 @@ import { getPurl, listPackages, listPurl } from "../client";
 import { requestParamsQuery } from "../hooks/table-controls";
 import {
   getMockSbomPackages,
+  getMockSbomPackagesByNames,
   mockPackageUuidsWithVulnerabilities,
   mockPackages,
 } from "@app/mocks/packages";
@@ -113,7 +114,29 @@ export const useFetchPackagesBySbomId = (
     queryKey: [PackagesQueryKey, "by-sbom", sbomId, params],
     queryFn: () => {
       if (__MOCK_DATA__) {
-        const items = getMockSbomPackages(sbomId);
+        const nameFilter = params.filters?.find(
+          (filter) => filter.field === "name",
+        );
+        let packageNames: string[] = [];
+        if (nameFilter) {
+          if (
+            typeof nameFilter.value === "object" &&
+            Array.isArray(nameFilter.value.list)
+          ) {
+            packageNames = nameFilter.value.list.map(String);
+          } else if (
+            nameFilter.value !== undefined &&
+            nameFilter.value !== null
+          ) {
+            packageNames = [String(nameFilter.value)];
+          }
+        }
+
+        const items =
+          packageNames.length > 0
+            ? getMockSbomPackagesByNames(sbomId, packageNames)
+            : getMockSbomPackages(sbomId);
+
         return Promise.resolve({
           data: { items, total: items.length },
         });

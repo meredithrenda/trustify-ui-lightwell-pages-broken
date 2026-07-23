@@ -15,10 +15,20 @@ const MOCK_LICENSE_IDS: LicenseRefMapping[] = [
   { license_id: "BSD-3-Clause", license_name: "BSD 3-Clause" },
 ];
 
-const packageNameFromPurl = (purl: string): string => {
+export const packageNameFromPurl = (purl: string): string => {
   const withoutQualifiers = purl.split("?")[0] ?? purl;
-  const namePart = withoutQualifiers.split("/").pop() ?? withoutQualifiers;
-  return namePart.split("@")[0] ?? namePart;
+  const at = withoutQualifiers.lastIndexOf("@");
+  const withoutVersion =
+    at >= 0 ? withoutQualifiers.slice(0, at) : withoutQualifiers;
+  const match = withoutVersion.match(/^pkg:[^/]+\/(.+)$/);
+  if (match?.[1]) {
+    const path = match[1];
+    if (path.startsWith("@")) {
+      return path;
+    }
+    return path.split("/").pop() ?? path;
+  }
+  return withoutVersion;
 };
 
 /** SBOM-scoped package rows for detail Packages tab. */
@@ -193,4 +203,63 @@ export const mockPackages: PurlSummary[] = [
       version: "3.12.4-1.el9",
     },
   },
+  {
+    uuid: "pkg-011",
+    purl: "pkg:rpm/redhat/firefox@115.15.0-1.el9_4?arch=x86_64",
+    base: {
+      uuid: "base-011",
+      purl: "pkg:rpm/redhat/firefox",
+    },
+    qualifiers: { arch: "x86_64" },
+    version: {
+      uuid: "ver-011",
+      purl: "pkg:rpm/redhat/firefox@115.15.0-1.el9_4",
+      version: "115.15.0-1.el9_4",
+    },
+  },
 ];
+
+/** Build SBOM package rows for specific package names (remediation deep-links). */
+export const getMockSbomPackagesByNames = (
+  sbomId: string,
+  packageNames: string[],
+): SbomPackage[] => {
+  const uniqueNames = [...new Set(packageNames.filter(Boolean))];
+
+  return uniqueNames.map((name, index) => {
+    const pkg =
+      mockPackages.find((item) => packageNameFromPurl(item.purl) === name) ??
+      mockPackages.find((item) => item.purl.includes(`/${name}@`)) ??
+      mockPackages.find((item) => item.uuid === name);
+
+    if (pkg) {
+      return {
+        id: `${sbomId}-filtered-pkg-${index + 1}`,
+        name: packageNameFromPurl(pkg.purl),
+        version: pkg.version.version,
+        group: null,
+        purl: [pkg],
+        cpe: [],
+        licenses: [
+          {
+            license_name:
+              MOCK_LICENSE_IDS[index % MOCK_LICENSE_IDS.length].license_id,
+            license_type: "declared" as const,
+          },
+        ],
+        licenses_ref_mapping: [],
+      };
+    }
+
+    return {
+      id: `${sbomId}-filtered-pkg-${index + 1}`,
+      name,
+      version: "—",
+      group: null,
+      purl: [],
+      cpe: [],
+      licenses: [],
+      licenses_ref_mapping: [],
+    };
+  });
+};

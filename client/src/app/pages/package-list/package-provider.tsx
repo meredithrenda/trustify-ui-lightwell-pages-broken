@@ -56,6 +56,8 @@ export const PackageSearchProvider: React.FunctionComponent<
       path: "Path",
       qualifiers: "Qualifiers",
       licenses: "Licenses",
+      recommendations: "Red Hat recommendations",
+      remediations: "Lightwell remediations",
       vulnerabilities: "Vulnerabilities",
     },
     isPaginationEnabled: true,

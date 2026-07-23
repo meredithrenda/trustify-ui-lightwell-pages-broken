@@ -21,25 +21,50 @@ import {
 
 import type { LicenseRefMapping } from "@app/client";
 import { FilterToolbar, FilterType } from "@app/components/FilterToolbar";
+import { LightwellRemediationsExpand } from "@app/components/LightwellRemediationsExpand";
+import { PackageRecommendationsExpand } from "@app/components/PackageRecommendationsExpand";
 import { SimplePagination } from "@app/components/SimplePagination";
 import {
   ConditionalTableBody,
   TableHeaderContentWithControls,
   TableRowContentWithControls,
 } from "@app/components/TableControls";
+import { VulnerabilityGallery } from "@app/components/VulnerabilityGallery";
+import { WithPackage } from "@app/components/WithPackage";
 import { FILTER_TEXT_CATEGORY_KEY } from "@app/Constants";
 import {
   getHubRequestParams,
   useTableControlProps,
   useTableControlState,
 } from "@app/hooks/table-controls";
+import { getMockPackageRecommendations } from "@app/mocks/package-recommendations";
+import {
+  mockPackages,
+  packageNameFromPurl,
+} from "@app/mocks/packages";
+import {
+  formatPackageRemediationCountLabel,
+  formatRecommendationCountLabel,
+  getMockRemediationsForPackage,
+} from "@app/mocks/sbom-remediations";
 import { useFetchPackagesBySbomId } from "@app/queries/packages";
 import { useFetchSbomsLicenseIds } from "@app/queries/sboms";
 import { Paths } from "@app/Routes";
 
 import { PackageVulnerabilities } from "../package-list/components/PackageVulnerabilities";
-import { WithPackage } from "@app/components/WithPackage";
-import { VulnerabilityGallery } from "@app/components/VulnerabilityGallery";
+
+import { SBOM_PACKAGES_TABLE_PREFIX } from "./helpers";
+
+declare const __MOCK_DATA__: boolean;
+
+const packageNameOptions = [
+  ...new Map(
+    mockPackages.map((pkg) => {
+      const name = packageNameFromPurl(pkg.purl);
+      return [name, { value: name, label: name }] as const;
+    }),
+  ).values(),
+];
 
 const renderLicenseWithMappings = (
   license: string,
@@ -59,11 +84,15 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
 
   const tableControlState = useTableControlState({
     tableName: "package-table",
+    persistenceKeyPrefix: SBOM_PACKAGES_TABLE_PREFIX,
+    persistTo: "urlParams",
     columnNames: {
       name: "Name",
       version: "Version",
       vulnerabilities: "Vulnerabilities",
       licenses: "Licenses",
+      recommendations: "Red Hat recommendations",
+      remediations: "Lightwell remediations",
       purls: "PURLs",
       cpes: "CPEs",
     },
@@ -77,6 +106,14 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
         title: "Filter text",
         placeholderText: "Search",
         type: FilterType.search,
+      },
+      {
+        categoryKey: "name",
+        title: "Package",
+        placeholderText: "Filter by package name",
+        type: FilterType.multiselect,
+        logicOperator: "OR",
+        selectOptions: packageNameOptions,
       },
       {
         categoryKey: "license",
@@ -156,9 +193,23 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
               <Th {...getThProps({ columnKey: "name" })} />
               <Th {...getThProps({ columnKey: "version" })} />
               <Th {...getThProps({ columnKey: "vulnerabilities" })} />
-              <Th {...getThProps({ columnKey: "licenses" })} />
+              <Th
+                modifier="fitContent"
+                {...getThProps({ columnKey: "licenses" })}
+              />
+              <Th
+                modifier="fitContent"
+                {...getThProps({ columnKey: "recommendations" })}
+              />
+              <Th
+                modifier="fitContent"
+                {...getThProps({ columnKey: "remediations" })}
+              />
               <Th {...getThProps({ columnKey: "purls" })} />
-              <Th {...getThProps({ columnKey: "cpes" })} />
+              <Th
+                modifier="fitContent"
+                {...getThProps({ columnKey: "cpes" })}
+              />
             </TableHeaderContentWithControls>
           </Tr>
         </Thead>
@@ -169,6 +220,14 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
           numRenderedColumns={numRenderedColumns}
         >
           {currentPageItems?.map((item, rowIndex) => {
+            const packageId = item.purl[0]?.uuid ?? item.id;
+            const recommendations = __MOCK_DATA__
+              ? getMockPackageRecommendations(packageId, item.name)
+              : [];
+            const remediations = __MOCK_DATA__
+              ? getMockRemediationsForPackage(packageId)
+              : [];
+
             return (
               <Tbody key={item.id} isExpanded={isCellExpanded(item)}>
                 <Tr {...getTrProps({ item })}>
@@ -181,7 +240,7 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
                       {[item.name, item.group].filter(Boolean).join("/")}
                     </Td>
                     <Td
-                      width={15}
+                      width={10}
                       modifier="truncate"
                       {...getTdProps({ columnKey: "version" })}
                     >
@@ -216,7 +275,7 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
                       )}
                     </Td>
                     <Td
-                      width={20}
+                      width={10}
                       modifier="breakWord"
                       {...getTdProps({
                         columnKey: "licenses",
@@ -226,6 +285,28 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
                       })}
                     >
                       {item.licenses.length} Licenses
+                    </Td>
+                    <Td
+                      modifier="nowrap"
+                      {...getTdProps({
+                        columnKey: "recommendations",
+                        isCompoundExpandToggle: recommendations.length > 0,
+                        item,
+                        rowIndex,
+                      })}
+                    >
+                      {formatRecommendationCountLabel(recommendations.length)}
+                    </Td>
+                    <Td
+                      modifier="nowrap"
+                      {...getTdProps({
+                        columnKey: "remediations",
+                        isCompoundExpandToggle: remediations.length > 0,
+                        item,
+                        rowIndex,
+                      })}
+                    >
+                      {formatPackageRemediationCountLabel(remediations.length)}
                     </Td>
                     <Td
                       width={20}
@@ -250,7 +331,7 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
                       )}
                     </Td>
                     <Td
-                      width={20}
+                      width={10}
                       modifier="breakWord"
                       {...getTdProps({
                         columnKey: "cpes",
@@ -286,6 +367,17 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
                                 </ListItem>
                               ))}
                             </List>
+                          ) : null}
+                          {isCellExpanded(item, "recommendations") ? (
+                            <PackageRecommendationsExpand
+                              recommendations={recommendations}
+                            />
+                          ) : null}
+                          {isCellExpanded(item, "remediations") ? (
+                            <LightwellRemediationsExpand
+                              items={remediations}
+                              showVulnerability
+                            />
                           ) : null}
                           {isCellExpanded(item, "purls") ? (
                             <List isPlain>

@@ -25,7 +25,7 @@ Trustify UI provides a web interface for software supply chain security:
 - **Products** — Manage product definitions and track their security posture
 - **Importers** — Configure and monitor data import jobs from external vulnerability and SBOM sources
 
-Access the application at `http://localhost:3000` (development) or your deployed URL. Authentication is optional and controlled by the `AUTH_REQUIRED` environment variable.
+Access the application at `http://localhost:3010` (development) or your deployed URL. Authentication is optional and controlled by the `AUTH_REQUIRED` environment variable.
 
 ## Development
 
@@ -58,7 +58,7 @@ npm ci
 npm run start:dev
 ```
 
-Open browser at <http://localhost:3000>
+Open browser at <http://localhost:3010>
 
 ## Environment variables
 

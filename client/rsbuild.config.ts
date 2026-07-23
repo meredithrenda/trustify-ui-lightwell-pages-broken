@@ -228,6 +228,8 @@ export default defineConfig({
     sourceMap: process.env.NODE_ENV === "development",
   },
   server: {
+    // Lightwell fork: avoid 3000 (used by the other Trustify prototype).
+    port: Number(process.env.PORT) || 3010,
     proxy: {
       "/auth": {
         target: TRUSTIFICATION_ENV.OIDC_SERVER_URL || "http://localhost:8090",

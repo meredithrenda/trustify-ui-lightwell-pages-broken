@@ -53,11 +53,7 @@ import {
   ExploitIntelligenceAnalysisCell,
   formatExploitIntelligenceRequestError,
 } from "@app/components/exploit-intelligence";
-import {
-  buildSbomVulnerabilityFocus,
-  TPA_INTELLIGENCE_ASSISTANT_SHORT_NAME,
-  useTpaAgent,
-} from "@app/components/tpa-agent";
+import { FilterToolbar, FilterType } from "@app/components/FilterToolbar";
 import { PackageQualifiers } from "@app/components/PackageQualifiers";
 import { SbomVulnerabilitiesDonutChart } from "@app/components/SbomVulnerabilitiesDonutChart";
 import { SeverityShieldAndText } from "@app/components/SeverityShieldAndText";
@@ -68,13 +64,25 @@ import {
   TableRowContentWithControls,
 } from "@app/components/TableControls";
 import { TdWithFocusStatus } from "@app/components/TdWithFocusStatus";
+import {
+  buildSbomVulnerabilityFocus,
+  TPA_INTELLIGENCE_ASSISTANT_SHORT_NAME,
+  useTpaAgent,
+} from "@app/components/tpa-agent";
 import { VulnerabilityDescription } from "@app/components/VulnerabilityDescription";
 import { useVulnerabilitiesOfSbom } from "@app/hooks/domain-controls/useVulnerabilitiesOfSbom";
 import { useLocalTableControls } from "@app/hooks/table-controls";
+import type { LightwellRemediationPackage } from "@app/mocks/sbom-remediations";
+import {
+  countRemediations,
+  getMockRemediationPackagesForCve,
+} from "@app/mocks/sbom-remediations";
 import { useFetchSBOMById } from "@app/queries/sboms";
 import { Paths } from "@app/Routes";
 import { useWithUiId } from "@app/utils/query-utils";
 import { decomposePurl, formatDate } from "@app/utils/utils";
+
+import { RemediationCountCell } from "./components/RemediationCountCell";
 
 declare const __MOCK_DATA__: boolean;
 
@@ -189,6 +197,8 @@ interface TableData {
   };
   /** When the API returns exploit-intelligence state for this row, it is passed through here */
   exploitIntelligence?: ExploitIntelligenceCellState;
+  /** Packages that carry remediations for this CVE (details live on package pages). */
+  remediationPackages: LightwellRemediationPackage[];
 }
 
 interface VulnerabilitiesBySbomProps {
@@ -270,12 +280,18 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
           ? MOCK_PROTOTYPE_EXPLOIT_INTEL_BY_CVE[item.vulnerability.identifier]
           : undefined;
 
+      const remediationPackages =
+        __MOCK_DATA__ && sbomId === MOCK_PROTOTYPE_EXPLOIT_INTEL_SBOM_ID
+          ? getMockRemediationPackagesForCve(item.vulnerability.identifier)
+          : [];
+
       const result: TableData = {
         vulnerability: item.vulnerability,
         vulnerabilityStatus: item.vulnerabilityStatus,
         purls: item.purls,
         opinionatedAdvisory: item.opinionatedAdvisory,
         exploitIntelligence,
+        remediationPackages,
       };
 
       return result;
@@ -296,6 +312,7 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
       id: "Id",
       description: "Description",
       cvss: "CVSS",
+      remediations: "Lightwell remediations",
       exploitIntelligence: "Exploit Intelligence Analysis",
       affectedDependencies: "Affected dependencies",
       updated: "Updated",
@@ -305,6 +322,7 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
     sortableColumns: [
       "id",
       "cvss",
+      "remediations",
       "affectedDependencies",
       "updated",
     ],
@@ -312,13 +330,50 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
     getSortValues: (item) => ({
       id: item.vulnerability.identifier,
       cvss: item.opinionatedAdvisory.score?.value ?? 0,
+      remediations: countRemediations(item.remediationPackages),
       affectedDependencies: item.purls.size,
       updated: item.vulnerability?.modified
         ? dayjs(item.vulnerability.modified).valueOf()
         : 0,
     }),
     isPaginationEnabled: true,
-    isFilterEnabled: false,
+    isFilterEnabled: true,
+    filterCategories: [
+      {
+        categoryKey: "hasRemediation",
+        title: "Lightwell remediations",
+        placeholderText: "Filter by Lightwell remediation",
+        type: FilterType.multiselect,
+        selectOptions: [
+          { value: "has-fix", label: "Has Lightwell remediation" },
+          { value: "no-fix", label: "No Lightwell remediation" },
+          { value: "backport", label: "Backport available" },
+          { value: "upgrade", label: "Version upgrade" },
+        ],
+        matcher: (filter, item) => {
+          const packages = item.remediationPackages;
+          const total = countRemediations(packages);
+          const fixShapes = packages.flatMap((pkg) =>
+            pkg.remediations.flatMap((remediation) =>
+              remediation.fixShape ? [remediation.fixShape] : [],
+            ),
+          );
+
+          switch (filter) {
+            case "has-fix":
+              return total > 0;
+            case "no-fix":
+              return total === 0;
+            case "backport":
+              return fixShapes.includes("backport");
+            case "upgrade":
+              return fixShapes.includes("upgrade");
+            default:
+              return true;
+          }
+        },
+      },
+    ],
     isExpansionEnabled: true,
     expandableVariant: "compound",
   });
@@ -328,6 +383,7 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
     numRenderedColumns,
     propHelpers: {
       toolbarProps,
+      filterToolbarProps,
       paginationToolbarItemProps,
       paginationProps,
       tableProps,
@@ -411,6 +467,7 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
         ) : null}
         <Toolbar {...toolbarProps}>
           <ToolbarContent>
+            <FilterToolbar {...filterToolbarProps} />
             <ToolbarItem {...paginationToolbarItemProps}>
               <SimplePagination
                 idPrefix="vulnerability-table"
@@ -425,18 +482,36 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
           <Thead>
             <Tr>
               <TableHeaderContentWithControls {...tableControls}>
-                <Th {...getThProps({ columnKey: "id" })} />
+                <Th modifier="fitContent" {...getThProps({ columnKey: "id" })} />
                 <Th {...getThProps({ columnKey: "description" })} />
-                <Th {...getThProps({ columnKey: "cvss" })} />
                 <Th
+                  modifier="fitContent"
+                  {...getThProps({ columnKey: "cvss" })}
+                />
+                <Th
+                  modifier="fitContent"
+                  {...getThProps({ columnKey: "remediations" })}
+                  info={{
+                    tooltip:
+                      "Lightwell remediations available for packages affected by this vulnerability. Opens the Packages tab filtered to those packages.",
+                  }}
+                />
+                <Th
+                  modifier="fitContent"
                   {...getThProps({ columnKey: "exploitIntelligence" })}
                   info={{
                     tooltip:
                       "Run Exploit Intelligence analysis for this vulnerability, or view the current finding.",
                   }}
                 />
-                <Th {...getThProps({ columnKey: "affectedDependencies" })} />
-                <Th {...getThProps({ columnKey: "updated" })} />
+                <Th
+                  modifier="fitContent"
+                  {...getThProps({ columnKey: "affectedDependencies" })}
+                />
+                <Th
+                  modifier="fitContent"
+                  {...getThProps({ columnKey: "updated" })}
+                />
               </TableHeaderContentWithControls>
             </Tr>
           </Thead>
@@ -464,8 +539,7 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
                       rowIndex={rowIndex}
                     >
                       <Td
-                        width={15}
-                        modifier="breakWord"
+                        modifier="nowrap"
                         {...getTdProps({ columnKey: "id" })}
                       >
                         <Link
@@ -479,7 +553,6 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
                       <TdWithFocusStatus>
                         {(isFocused, setIsFocused) => (
                           <Td
-                            width={35}
                             modifier="truncate"
                             onFocus={() => setIsFocused(true)}
                             onBlur={() => setIsFocused(false)}
@@ -499,7 +572,10 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
                           </Td>
                         )}
                       </TdWithFocusStatus>
-                      <Td width={10} {...getTdProps({ columnKey: "cvss" })}>
+                      <Td
+                        modifier="nowrap"
+                        {...getTdProps({ columnKey: "cvss" })}
+                      >
                         <SeverityShieldAndText
                           value={item.opinionatedAdvisory.extendedSeverity}
                           score={item.opinionatedAdvisory.score?.value ?? null}
@@ -508,7 +584,15 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
                         />
                       </Td>
                       <Td
-                        width={15}
+                        modifier="nowrap"
+                        {...getTdProps({ columnKey: "remediations" })}
+                      >
+                        <RemediationCountCell
+                          sbomId={sbomId}
+                          packages={item.remediationPackages}
+                        />
+                      </Td>
+                      <Td
                         modifier="nowrap"
                         {...getTdProps({ columnKey: "exploitIntelligence" })}
                       >
@@ -521,8 +605,7 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
                         />
                       </Td>
                       <Td
-                        width={15}
-                        modifier="truncate"
+                        modifier="nowrap"
                         {...getTdProps({
                           columnKey: "affectedDependencies",
                           isCompoundExpandToggle: true,
@@ -533,8 +616,7 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
                         {item.purls.size}
                       </Td>
                       <Td
-                        width={10}
-                        modifier="truncate"
+                        modifier="nowrap"
                         {...getTdProps({ columnKey: "updated" })}
                       >
                         {formatDate(item.vulnerability?.modified)}

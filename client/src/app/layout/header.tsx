@@ -11,6 +11,7 @@ import {
   DropdownItem,
   DropdownList,
   Icon,
+  Label,
   Masthead,
   MastheadBrand,
   MastheadContent,
@@ -104,7 +105,13 @@ const HeaderAppInner: React.FC<IHeaderAppInnerProps> = ({ auth }) => {
               <BarsIcon />
             </PageToggleButton>
           </MastheadToggle>
-          <MastheadBrand data-codemods>
+          <MastheadBrand
+            data-codemods
+            style={{
+              alignItems: "center",
+              gap: "var(--pf-t--global--spacer--sm)",
+            }}
+          >
             <MastheadLogo data-codemods>
               <Split>
                 <SplitItem>
@@ -129,6 +136,7 @@ const HeaderAppInner: React.FC<IHeaderAppInnerProps> = ({ auth }) => {
                 </SplitItem>
               </Split>
             </MastheadLogo>
+            <Label color="purple">Lightwell demo</Label>
           </MastheadBrand>
         </MastheadMain>
         <MastheadContent>

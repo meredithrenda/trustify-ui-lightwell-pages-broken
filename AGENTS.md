@@ -15,7 +15,7 @@ Four npm workspaces:
   - Built with Rollup to both ESM (.mjs) and CommonJS (.cjs)
 - **`client/`** — React SPA
   - Tech: ReactJS, TypeScript, Vite, PatternFly
-  - Dev server: port 3000 with proxy to backend
+  - Dev server: port 3010 with proxy to backend
   - Key paths (with `@app` alias mapping to `client/src/app/`):
     - `@app/Routes.tsx` — route definitions with lazy() imports
     - `@app/pages/` — page components, one directory per page
@@ -37,7 +37,7 @@ Four npm workspaces:
 # Install dependencies (always after clone or pulling dependency updates)
 npm ci
 
-# Development server (builds common, runs client on :3000)
+# Development server (builds common, runs client on :3010)
 npm run start:dev
 
 # Type check and lint

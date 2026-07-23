@@ -63,6 +63,7 @@ import {
 import { useLocalTableControls } from "@app/hooks/table-controls";
 
 import { ANSICOLOR } from "@app/Constants";
+import { getImporterAccess } from "@app/mocks/importers";
 import { ImporterProgress } from "./components/importer-progress";
 import { ImporterStatusIcon } from "./components/importer-status-icon";
 import { DocumentMetadata } from "@app/components/DocumentMetadata";
@@ -165,6 +166,7 @@ export const ImporterList: React.FC = () => {
     columnNames: {
       name: "Name",
       type: "Type",
+      access: "Access",
       description: "Description",
       source: "Source",
       period: "Period",
@@ -187,6 +189,18 @@ export const ImporterList: React.FC = () => {
         type: FilterType.search,
         placeholderText: "Search by name...",
         getItemValue: (item) => item.name || "",
+      },
+      {
+        categoryKey: "access",
+        title: "Access",
+        type: FilterType.multiselect,
+        logicOperator: "OR",
+        selectOptions: [
+          { value: "public", label: "Public" },
+          { value: "private", label: "Private" },
+        ],
+        placeholderText: "Access",
+        matcher: (filter, item) => filter === getImporterAccess(item.name),
       },
       {
         categoryKey: "status",
@@ -289,7 +303,7 @@ export const ImporterList: React.FC = () => {
         <div>
           <Toolbar {...toolbarProps} aria-label="importer-toolbar">
             <ToolbarContent>
-              <FilterToolbar showFiltersSideBySide {...filterToolbarProps} />
+              <FilterToolbar {...filterToolbarProps} />
               <ToolbarItem {...paginationToolbarItemProps}>
                 <SimplePagination
                   idPrefix="importer-table"
@@ -304,12 +318,29 @@ export const ImporterList: React.FC = () => {
             <Thead>
               <Tr>
                 <TableHeaderContentWithControls {...tableControls}>
-                  <Th {...getThProps({ columnKey: "name" })} />
-                  <Th {...getThProps({ columnKey: "type" })} />
+                  <Th
+                    modifier="fitContent"
+                    {...getThProps({ columnKey: "name" })}
+                  />
+                  <Th
+                    modifier="fitContent"
+                    {...getThProps({ columnKey: "type" })}
+                  />
+                  <Th
+                    width={10}
+                    modifier="nowrap"
+                    {...getThProps({ columnKey: "access" })}
+                  />
                   <Th {...getThProps({ columnKey: "description" })} />
                   <Th {...getThProps({ columnKey: "source" })} />
-                  <Th {...getThProps({ columnKey: "period" })} />
-                  <Th {...getThProps({ columnKey: "state" })} />
+                  <Th
+                    modifier="fitContent"
+                    {...getThProps({ columnKey: "period" })}
+                  />
+                  <Th
+                    modifier="fitContent"
+                    {...getThProps({ columnKey: "state" })}
+                  />
                 </TableHeaderContentWithControls>
               </Tr>
             </Thead>
@@ -328,6 +359,7 @@ export const ImporterList: React.FC = () => {
 
                 const importerStatus = getImporterStatus(item);
                 const isImporterDisabled = importerStatus === "disabled";
+                const importerAccess = getImporterAccess(item.name);
                 return (
                   <Tbody key={item.name}>
                     <Tr {...getTrProps({ item })}>
@@ -349,6 +381,13 @@ export const ImporterList: React.FC = () => {
                           {...getTdProps({ columnKey: "type" })}
                         >
                           {importerType}
+                        </Td>
+                        <Td
+                          width={10}
+                          modifier="nowrap"
+                          {...getTdProps({ columnKey: "access" })}
+                        >
+                          {importerAccess === "private" ? "Private" : "Public"}
                         </Td>
                         <Td
                           width={20}

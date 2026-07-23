@@ -12,14 +12,24 @@ import {
   listImporters,
   updateImporter,
 } from "@app/client";
+import { mockImporters } from "@app/mocks/importers";
+
+declare const __MOCK_DATA__: boolean;
 
 export const ImportersQueryKey = "importers";
 
 export const useFetchImporters = (refetchDisabled = false) => {
   const { isLoading, error, refetch, data } = useQuery({
     queryKey: [ImportersQueryKey],
-    queryFn: () => listImporters({ client }),
-    refetchInterval: !refetchDisabled ? DEFAULT_REFETCH_INTERVAL : false,
+    queryFn: () => {
+      if (__MOCK_DATA__) {
+        return Promise.resolve({ data: mockImporters });
+      }
+      return listImporters({ client });
+    },
+    refetchInterval: !refetchDisabled && !__MOCK_DATA__
+      ? DEFAULT_REFETCH_INTERVAL
+      : false,
   });
 
   return {
