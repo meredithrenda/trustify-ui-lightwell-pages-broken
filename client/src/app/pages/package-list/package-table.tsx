@@ -104,7 +104,7 @@ export const PackageTable: React.FC = () => {
               ? getMockPackageRecommendations(item.uuid, packageName)
               : [];
             const remediations = __MOCK_DATA__
-              ? getMockRemediationsForPackage(item.uuid)
+              ? getMockRemediationsForPackage(item.uuid, packageName)
               : [];
 
             return (

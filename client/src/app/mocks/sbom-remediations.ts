@@ -253,6 +253,24 @@ export const MOCK_REMEDIATION_PACKAGES_BY_CVE: Record<
     },
   ],
   "CVE-2024-0232": [],
+  "CVE-2024-38816": [
+    {
+      packageId: "pkg-012",
+      packageName: "spring-boot",
+      remediations: [
+        {
+          id: "rem-2024-38816-1",
+          kind: "remediation",
+          fixShape: "backport",
+          fixedInVersion: "3.2.0.redhat-00002",
+          vulnerabilityId: "CVE-2024-38816",
+          details:
+            "Lightwell backported the Spring Framework path-traversal fix into the spring-boot 3.2.0 stream. The version string stays 3.2.0-compatible so customers are not forced to a major upgrade; third-party scanners that match only on the upstream version string may still flag this CVE.",
+          advisoryId: "RHLW-2024:38816",
+        },
+      ],
+    },
+  ],
 };
 
 export const getMockRemediationPackagesForCve = (
@@ -263,12 +281,16 @@ export const getMockRemediationPackagesForCve = (
 /** All Lightwell remediations for a package across CVEs. */
 export const getMockRemediationsForPackage = (
   packageId: string,
+  packageName?: string,
 ): LightwellRemediationExpandItem[] => {
   const items: LightwellRemediationExpandItem[] = [];
 
   for (const packages of Object.values(MOCK_REMEDIATION_PACKAGES_BY_CVE)) {
     for (const pkg of packages) {
-      if (pkg.packageId !== packageId) {
+      const matchesId = pkg.packageId === packageId;
+      const matchesName =
+        !!packageName && pkg.packageName === packageName;
+      if (!matchesId && !matchesName) {
         continue;
       }
       for (const remediation of pkg.remediations) {

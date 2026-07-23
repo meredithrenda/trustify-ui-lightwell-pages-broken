@@ -33,15 +33,7 @@ export const packageNameFromPurl = (purl: string): string => {
 
 /** SBOM-scoped package rows for detail Packages tab. */
 export const getMockSbomPackages = (sbomId: string): SbomPackage[] => {
-  // Rotate a stable slice of mock packages per SBOM so every detail page has rows.
-  const seed = [...sbomId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  const start = seed % mockPackages.length;
-  const count = 4 + (seed % 4);
-  const selected = Array.from({ length: count }, (_, index) => {
-    return mockPackages[(start + index) % mockPackages.length];
-  });
-
-  return selected.map((pkg, index) => ({
+  const toRow = (pkg: PurlSummary, index: number): SbomPackage => ({
     id: `${sbomId}-pkg-${index + 1}`,
     name: packageNameFromPurl(pkg.purl),
     version: pkg.version.version,
@@ -50,12 +42,33 @@ export const getMockSbomPackages = (sbomId: string): SbomPackage[] => {
     cpe: [],
     licenses: [
       {
-        license_name: MOCK_LICENSE_IDS[index % MOCK_LICENSE_IDS.length].license_id,
+        license_name:
+          MOCK_LICENSE_IDS[index % MOCK_LICENSE_IDS.length].license_id,
         license_type: "declared" as const,
       },
     ],
     licenses_ref_mapping: [],
-  }));
+  });
+
+  // Lightwell demo SBOM: always lead with spring-boot for the backport walkthrough.
+  if (sbomId === "a1b2c3d4-0008-4000-8000-000000000008") {
+    const springBoot = mockPackages.find((pkg) => pkg.uuid === "pkg-012");
+    const supporting = mockPackages
+      .filter((pkg) => pkg.uuid !== "pkg-012")
+      .slice(0, 4);
+    const selected = springBoot ? [springBoot, ...supporting] : supporting;
+    return selected.map((pkg, index) => toRow(pkg, index));
+  }
+
+  // Rotate a stable slice of mock packages per SBOM so every detail page has rows.
+  const seed = [...sbomId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  const start = seed % mockPackages.length;
+  const count = 4 + (seed % 4);
+  const selected = Array.from({ length: count }, (_, index) => {
+    return mockPackages[(start + index) % mockPackages.length];
+  });
+
+  return selected.map((pkg, index) => toRow(pkg, index));
 };
 
 export const getMockSbomLicenseIds = (
@@ -217,7 +230,27 @@ export const mockPackages: PurlSummary[] = [
       version: "115.15.0-1.el9_4",
     },
   },
+  {
+    uuid: "pkg-012",
+    purl: "pkg:maven/org.springframework.boot/spring-boot@3.2.0",
+    base: {
+      uuid: "base-012",
+      purl: "pkg:maven/org.springframework.boot/spring-boot",
+    },
+    qualifiers: {},
+    version: {
+      uuid: "ver-012",
+      purl: "pkg:maven/org.springframework.boot/spring-boot@3.2.0",
+      version: "3.2.0",
+    },
+  },
 ];
+
+/** SBOM used for the Lightwell spring-boot backport demo walkthrough. */
+export const MOCK_SPRING_BOOT_SBOM_ID =
+  "a1b2c3d4-0008-4000-8000-000000000008";
+
+export const MOCK_SPRING_BOOT_PACKAGE_ID = "pkg-012";
 
 /** Build SBOM package rows for specific package names (remediation deep-links). */
 export const getMockSbomPackagesByNames = (

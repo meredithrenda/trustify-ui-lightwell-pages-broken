@@ -225,7 +225,7 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
               ? getMockPackageRecommendations(packageId, item.name)
               : [];
             const remediations = __MOCK_DATA__
-              ? getMockRemediationsForPackage(packageId)
+              ? getMockRemediationsForPackage(packageId, item.name)
               : [];
 
             return (
