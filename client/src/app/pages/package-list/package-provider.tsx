@@ -12,6 +12,7 @@ import {
   useTableControlProps,
   useTableControlState,
 } from "@app/hooks/table-controls";
+import { packageMatchesLightwellRemediationFilter } from "@app/mocks/sbom-remediations";
 import { useFetchLicenses } from "@app/queries/licenses";
 import { useFetchPackages } from "@app/queries/packages";
 import { decomposePurl, parseBooleanIfPossible } from "@app/utils/utils";
@@ -20,6 +21,8 @@ import {
   type PackageTableData,
   PackageSearchContext,
 } from "./package-context";
+
+declare const __MOCK_DATA__: boolean;
 
 interface IPackageProvider {
   children: React.ReactNode;
@@ -118,6 +121,18 @@ export const PackageSearchProvider: React.FunctionComponent<
         showOutsideDropdown: true,
         excludeFromHubRequest: true,
       },
+      {
+        categoryKey: "lightwellRemediation",
+        title: "Lightwell remediations",
+        placeholderText: "Filter by Lightwell remediation",
+        type: FilterType.multiselect,
+        logicOperator: "OR",
+        excludeFromHubRequest: true,
+        selectOptions: [
+          { value: "backport", label: "Backport" },
+          { value: "upgrade", label: "Version upgrade" },
+        ],
+      },
     ],
     isExpansionEnabled: true,
     expandableVariant: "compound",
@@ -126,6 +141,8 @@ export const PackageSearchProvider: React.FunctionComponent<
   const hasVulnerabilities = parseBooleanIfPossible(
     tableControlState.filterState.filterValues.has_vulnerabilities?.[0],
   );
+  const lightwellRemediationFilters =
+    tableControlState.filterState.filterValues.lightwellRemediation ?? [];
 
   const {
     result: { data: packages, total: totalItemCount },
@@ -144,26 +161,48 @@ export const PackageSearchProvider: React.FunctionComponent<
   );
 
   const enrichedPackages = React.useMemo(() => {
-    return packages.map((item) => {
+    const items = packages.map((item) => {
       const result: PackageTableData = {
         ...item,
         decomposedPurl: decomposePurl(item.purl),
       };
       return result;
     });
-  }, [packages]);
+
+    if (!__MOCK_DATA__ || lightwellRemediationFilters.length === 0) {
+      return items;
+    }
+
+    return items.filter((item) =>
+      packageMatchesLightwellRemediationFilter(
+        item.uuid,
+        item.decomposedPurl?.name,
+        lightwellRemediationFilters,
+      ),
+    );
+  }, [packages, lightwellRemediationFilters]);
+
+  const filteredTotalItemCount =
+    __MOCK_DATA__ && lightwellRemediationFilters.length > 0
+      ? enrichedPackages.length
+      : totalItemCount;
 
   const tableControls = useTableControlProps({
     ...tableControlState,
     idProperty: "uuid",
     currentPageItems: enrichedPackages,
-    totalItemCount,
+    totalItemCount: filteredTotalItemCount,
     isLoading: isFetching,
   });
 
   return (
     <PackageSearchContext.Provider
-      value={{ totalItemCount, isFetching, fetchError, tableControls }}
+      value={{
+        totalItemCount: filteredTotalItemCount,
+        isFetching,
+        fetchError,
+        tableControls,
+      }}
     >
       {children}
     </PackageSearchContext.Provider>

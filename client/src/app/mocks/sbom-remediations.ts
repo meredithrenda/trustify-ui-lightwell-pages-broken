@@ -1,8 +1,9 @@
 /**
  * Prototype Lightwell remediations.
  *
- * Source of truth is package-scoped. List views show counts and expand
- * inline details via compound expandable cells.
+ * Source of truth is package-scoped. Package tables show fixed-version
+ * pills (`.rhlw-` = backport; other versions = upgrades). SBOM vulnerability
+ * lists show counts that deep-link to the Packages tab.
  */
 
 export type LightwellRemediationKind = "remediation" | "recommendation";
@@ -40,12 +41,117 @@ export const formatFixShapeLabel = (
   fixShape?: LightwellFixShape,
 ): string | undefined => {
   if (fixShape === "backport") {
-    return "Backport";
+    return "Lightwell backport";
   }
   if (fixShape === "upgrade") {
     return "Version upgrade";
   }
   return undefined;
+};
+
+/** True when a remediation version uses the Lightwell `.rhlw-####` build suffix. */
+export const isLightwellBackportVersion = (version: string): boolean =>
+  /\.rhlw-\d+/i.test(version);
+
+export type RemediationVersionOption = {
+  /** Fixed / recommended package version string as shown in live TPA. */
+  version: string;
+};
+
+/**
+ * Live-style remediation options for package rows.
+ * `.rhlw-####` = Lightwell backport; other versions = upgrades.
+ * Seeded to mirror real TPA variety: backport-only, upgrade-only, both, and dense lists.
+ */
+export const MOCK_REMEDIATION_VERSIONS_BY_PACKAGE: Record<
+  string,
+  RemediationVersionOption[]
+> = {
+  // Backport only
+  "pkg-001": [{ version: "3.0.7-27.el9.rhlw-00001" }],
+  // Upgrade only
+  "pkg-007": [{ version: "2.17.1" }, { version: "2.18.0" }],
+  // Both (Lightwell spring-boot demo)
+  "pkg-012": [
+    { version: "2.7.18.rhlw-00004" },
+    { version: "3.5.14" },
+    { version: "4.0.6" },
+    { version: "3.3.11" },
+    { version: "3.4.5" },
+    { version: "2.2.11.RELEASE" },
+  ],
+  "spring-boot": [
+    { version: "2.7.18.rhlw-00004" },
+    { version: "3.5.14" },
+    { version: "4.0.6" },
+    { version: "3.3.11" },
+    { version: "3.4.5" },
+    { version: "2.2.11.RELEASE" },
+  ],
+  // Dense upgrade list (real TPA can hit 60+; keep mock large enough to stress the cell)
+  "pkg-002": [
+    { version: "5.14.0-284.el9.rhlw-00003" },
+    ...Array.from({ length: 48 }, (_, index) => ({
+      version: `5.14.0-${280 + index}.el9_${1 + (index % 5)}`,
+    })),
+  ],
+  kernel: [
+    { version: "5.14.0-284.el9.rhlw-00003" },
+    ...Array.from({ length: 48 }, (_, index) => ({
+      version: `5.14.0-${280 + index}.el9_${1 + (index % 5)}`,
+    })),
+  ],
+};
+
+export const getMockRemediationVersionsForPackage = (
+  packageId: string,
+  packageName?: string,
+): RemediationVersionOption[] => {
+  if (MOCK_REMEDIATION_VERSIONS_BY_PACKAGE[packageId]) {
+    return MOCK_REMEDIATION_VERSIONS_BY_PACKAGE[packageId];
+  }
+  if (packageName && MOCK_REMEDIATION_VERSIONS_BY_PACKAGE[packageName]) {
+    return MOCK_REMEDIATION_VERSIONS_BY_PACKAGE[packageName];
+  }
+  return [];
+};
+
+/** Fix shapes present for a package based on remediation version pills. */
+export const getPackageRemediationFixShapes = (
+  packageId: string,
+  packageName?: string,
+): LightwellFixShape[] => {
+  const versions = getMockRemediationVersionsForPackage(packageId, packageName);
+  if (versions.length === 0) {
+    return [];
+  }
+
+  const shapes: LightwellFixShape[] = [];
+  if (versions.some((option) => isLightwellBackportVersion(option.version))) {
+    shapes.push("backport");
+  }
+  if (versions.some((option) => !isLightwellBackportVersion(option.version))) {
+    shapes.push("upgrade");
+  }
+  return shapes;
+};
+
+/**
+ * Multiselect OR matcher: package matches if it has any selected fix shape.
+ * Packages with no remediations never match.
+ */
+export const packageMatchesLightwellRemediationFilter = (
+  packageId: string,
+  packageName: string | undefined,
+  selectedShapes: string[],
+): boolean => {
+  if (selectedShapes.length === 0) {
+    return true;
+  }
+  const shapes = getPackageRemediationFixShapes(packageId, packageName);
+  return selectedShapes.some((selected) =>
+    shapes.includes(selected as LightwellFixShape),
+  );
 };
 
 export const flattenRemediationPackages = (
@@ -166,11 +272,11 @@ export const MOCK_REMEDIATION_PACKAGES_BY_CVE: Record<
         {
           id: "rem-2024-12747-1",
           kind: "remediation",
-          fixShape: "upgrade",
-          fixedInVersion: "3.0.7-28.el9",
+          fixShape: "backport",
+          fixedInVersion: "3.0.7-27.el9.rhlw-00001",
           vulnerabilityId: "CVE-2024-12747",
           details:
-            "Update openssl to the fixed package version that addresses the vulnerability.",
+            "Lightwell backport applied in the 3.0.7 stream without requiring a major upgrade.",
           advisoryId: "RHSA-2024:9001",
         },
       ],
@@ -262,10 +368,10 @@ export const MOCK_REMEDIATION_PACKAGES_BY_CVE: Record<
           id: "rem-2024-38816-1",
           kind: "remediation",
           fixShape: "backport",
-          fixedInVersion: "3.2.0.redhat-00002",
+          fixedInVersion: "2.7.18.rhlw-00004",
           vulnerabilityId: "CVE-2024-38816",
           details:
-            "Lightwell backported the Spring Framework path-traversal fix into the spring-boot 3.2.0 stream. The version string stays 3.2.0-compatible so customers are not forced to a major upgrade; third-party scanners that match only on the upstream version string may still flag this CVE.",
+            "Lightwell backport (2.7.18.rhlw-00004): security fix applied in the 2.7.18 stream without requiring a major upgrade. Other listed versions are upgrades to newer Spring Boot releases.",
           advisoryId: "RHLW-2024:38816",
         },
       ],

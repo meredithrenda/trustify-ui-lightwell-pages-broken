@@ -13,7 +13,6 @@ import {
   Tr,
 } from "@patternfly/react-table";
 
-import { LightwellRemediationsExpand } from "@app/components/LightwellRemediationsExpand";
 import { PackageQualifiers } from "@app/components/PackageQualifiers";
 import { PackageRecommendationsExpand } from "@app/components/PackageRecommendationsExpand";
 import { SimplePagination } from "@app/components/SimplePagination";
@@ -24,15 +23,12 @@ import {
 } from "@app/components/TableControls";
 import { WithPackage } from "@app/components/WithPackage";
 import { getMockPackageRecommendations } from "@app/mocks/package-recommendations";
-import {
-  formatPackageRemediationCountLabel,
-  getMockRemediationsForPackage,
-} from "@app/mocks/sbom-remediations";
 import { Paths } from "@app/Routes";
 
 import { PackageLicenses } from "./components/PackageLicences";
 import { PackageRecommendationCountCell } from "./components/PackageRecommendationCountCell";
 import { PackageVulnerabilities } from "./components/PackageVulnerabilities";
+import { RemediationVersionCell } from "./components/RemediationVersionCell";
 import { PackageSearchContext } from "./package-context";
 
 declare const __MOCK_DATA__: boolean;
@@ -79,6 +75,10 @@ export const PackageTable: React.FC = () => {
               <Th
                 modifier="fitContent"
                 {...getThProps({ columnKey: "remediations" })}
+                info={{
+                  tooltip:
+                    "Fixed package versions from Lightwell. Blue pills with a .rhlw- suffix are Lightwell backports (same version stream). Green pills are version upgrades.",
+                }}
               />
               <Th
                 modifier="fitContent"
@@ -102,9 +102,6 @@ export const PackageTable: React.FC = () => {
             const packageName = item.decomposedPurl?.name;
             const recommendations = __MOCK_DATA__
               ? getMockPackageRecommendations(item.uuid, packageName)
-              : [];
-            const remediations = __MOCK_DATA__
-              ? getMockRemediationsForPackage(item.uuid, packageName)
               : [];
 
             return (
@@ -184,17 +181,13 @@ export const PackageTable: React.FC = () => {
                           />
                         </Td>
                         <Td
-                          modifier="nowrap"
-                          {...getTdProps({
-                            columnKey: "remediations",
-                            isCompoundExpandToggle: remediations.length > 0,
-                            item,
-                            rowIndex,
-                          })}
+                          width={20}
+                          {...getTdProps({ columnKey: "remediations" })}
                         >
-                          {formatPackageRemediationCountLabel(
-                            remediations.length,
-                          )}
+                          <RemediationVersionCell
+                            packageId={item.uuid}
+                            packageName={packageName}
+                          />
                         </Td>
                         <Td
                           width={10}
@@ -249,12 +242,6 @@ export const PackageTable: React.FC = () => {
                               {isCellExpanded(item, "recommendations") ? (
                                 <PackageRecommendationsExpand
                                   recommendations={recommendations}
-                                />
-                              ) : null}
-                              {isCellExpanded(item, "remediations") ? (
-                                <LightwellRemediationsExpand
-                                  items={remediations}
-                                  showVulnerability
                                 />
                               ) : null}
                             </div>

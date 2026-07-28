@@ -344,33 +344,19 @@ export const VulnerabilitiesBySbom: React.FC<VulnerabilitiesBySbomProps> = ({
         title: "Lightwell remediations",
         placeholderText: "Filter by Lightwell remediation",
         type: FilterType.multiselect,
+        logicOperator: "OR",
         selectOptions: [
-          { value: "has-fix", label: "Has Lightwell remediation" },
-          { value: "no-fix", label: "No Lightwell remediation" },
-          { value: "backport", label: "Backport available" },
+          { value: "backport", label: "Backport" },
           { value: "upgrade", label: "Version upgrade" },
         ],
         matcher: (filter, item) => {
-          const packages = item.remediationPackages;
-          const total = countRemediations(packages);
-          const fixShapes = packages.flatMap((pkg) =>
+          const fixShapes = item.remediationPackages.flatMap((pkg) =>
             pkg.remediations.flatMap((remediation) =>
               remediation.fixShape ? [remediation.fixShape] : [],
             ),
           );
 
-          switch (filter) {
-            case "has-fix":
-              return total > 0;
-            case "no-fix":
-              return total === 0;
-            case "backport":
-              return fixShapes.includes("backport");
-            case "upgrade":
-              return fixShapes.includes("upgrade");
-            default:
-              return true;
-          }
+          return fixShapes.includes(filter as "backport" | "upgrade");
         },
       },
     ],

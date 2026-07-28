@@ -1,4 +1,4 @@
-import type React from "react";
+import React from "react";
 import { generatePath, Link } from "react-router-dom";
 
 import {
@@ -21,7 +21,6 @@ import {
 
 import type { LicenseRefMapping } from "@app/client";
 import { FilterToolbar, FilterType } from "@app/components/FilterToolbar";
-import { LightwellRemediationsExpand } from "@app/components/LightwellRemediationsExpand";
 import { PackageRecommendationsExpand } from "@app/components/PackageRecommendationsExpand";
 import { SimplePagination } from "@app/components/SimplePagination";
 import {
@@ -43,15 +42,15 @@ import {
   packageNameFromPurl,
 } from "@app/mocks/packages";
 import {
-  formatPackageRemediationCountLabel,
   formatRecommendationCountLabel,
-  getMockRemediationsForPackage,
+  packageMatchesLightwellRemediationFilter,
 } from "@app/mocks/sbom-remediations";
 import { useFetchPackagesBySbomId } from "@app/queries/packages";
 import { useFetchSbomsLicenseIds } from "@app/queries/sboms";
 import { Paths } from "@app/Routes";
 
 import { PackageVulnerabilities } from "../package-list/components/PackageVulnerabilities";
+import { RemediationVersionCell } from "../package-list/components/RemediationVersionCell";
 
 import { SBOM_PACKAGES_TABLE_PREFIX } from "./helpers";
 
@@ -127,10 +126,25 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
           label: license.license_name.toUpperCase(),
         })),
       },
+      {
+        categoryKey: "lightwellRemediation",
+        title: "Lightwell remediations",
+        placeholderText: "Filter by Lightwell remediation",
+        type: FilterType.multiselect,
+        logicOperator: "OR",
+        excludeFromHubRequest: true,
+        selectOptions: [
+          { value: "backport", label: "Backport" },
+          { value: "upgrade", label: "Version upgrade" },
+        ],
+      },
     ],
     isExpansionEnabled: true,
     expandableVariant: "compound",
   });
+
+  const lightwellRemediationFilters =
+    tableControlState.filterState.filterValues.lightwellRemediation ?? [];
 
   const {
     result: { data: packages, total: totalItemCount },
@@ -146,11 +160,31 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
     total: true,
   });
 
+  const filteredPackages = React.useMemo(() => {
+    if (!__MOCK_DATA__ || lightwellRemediationFilters.length === 0) {
+      return packages;
+    }
+
+    return packages.filter((item) => {
+      const packageId = item.purl[0]?.uuid ?? item.id;
+      return packageMatchesLightwellRemediationFilter(
+        packageId,
+        item.name,
+        lightwellRemediationFilters,
+      );
+    });
+  }, [packages, lightwellRemediationFilters]);
+
+  const filteredTotalItemCount =
+    __MOCK_DATA__ && lightwellRemediationFilters.length > 0
+      ? filteredPackages.length
+      : totalItemCount;
+
   const tableControls = useTableControlProps({
     ...tableControlState,
     idProperty: "id",
-    currentPageItems: packages,
-    totalItemCount,
+    currentPageItems: filteredPackages,
+    totalItemCount: filteredTotalItemCount,
     isLoading: isFetching,
   });
 
@@ -204,6 +238,10 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
               <Th
                 modifier="fitContent"
                 {...getThProps({ columnKey: "remediations" })}
+                info={{
+                  tooltip:
+                    "Fixed package versions from Lightwell. Blue pills with a .rhlw- suffix are Lightwell backports (same version stream). Green pills are version upgrades.",
+                }}
               />
               <Th {...getThProps({ columnKey: "purls" })} />
               <Th
@@ -223,9 +261,6 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
             const packageId = item.purl[0]?.uuid ?? item.id;
             const recommendations = __MOCK_DATA__
               ? getMockPackageRecommendations(packageId, item.name)
-              : [];
-            const remediations = __MOCK_DATA__
-              ? getMockRemediationsForPackage(packageId, item.name)
               : [];
 
             return (
@@ -298,15 +333,13 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
                       {formatRecommendationCountLabel(recommendations.length)}
                     </Td>
                     <Td
-                      modifier="nowrap"
-                      {...getTdProps({
-                        columnKey: "remediations",
-                        isCompoundExpandToggle: remediations.length > 0,
-                        item,
-                        rowIndex,
-                      })}
+                      width={20}
+                      {...getTdProps({ columnKey: "remediations" })}
                     >
-                      {formatPackageRemediationCountLabel(remediations.length)}
+                      <RemediationVersionCell
+                        packageId={packageId}
+                        packageName={item.name}
+                      />
                     </Td>
                     <Td
                       width={20}
@@ -371,12 +404,6 @@ export const PackagesBySbom: React.FC<PackagesProps> = ({ sbomId }) => {
                           {isCellExpanded(item, "recommendations") ? (
                             <PackageRecommendationsExpand
                               recommendations={recommendations}
-                            />
-                          ) : null}
-                          {isCellExpanded(item, "remediations") ? (
-                            <LightwellRemediationsExpand
-                              items={remediations}
-                              showVulnerability
                             />
                           ) : null}
                           {isCellExpanded(item, "purls") ? (

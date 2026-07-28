@@ -232,16 +232,16 @@ export const mockPackages: PurlSummary[] = [
   },
   {
     uuid: "pkg-012",
-    purl: "pkg:maven/org.springframework.boot/spring-boot@3.2.0",
+    purl: "pkg:maven/org.springframework.boot/spring-boot@2.7.18?type=jar",
     base: {
       uuid: "base-012",
       purl: "pkg:maven/org.springframework.boot/spring-boot",
     },
-    qualifiers: {},
+    qualifiers: { type: "jar" },
     version: {
       uuid: "ver-012",
-      purl: "pkg:maven/org.springframework.boot/spring-boot@3.2.0",
-      version: "3.2.0",
+      purl: "pkg:maven/org.springframework.boot/spring-boot@2.7.18",
+      version: "2.7.18",
     },
   },
 ];

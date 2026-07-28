@@ -209,8 +209,8 @@ const mockSboms: SbomSummary[] = [
       {
         id: "pkg-012",
         name: "spring-boot",
-        version: "3.2.0",
-        purl: ["pkg:maven/org.springframework.boot/spring-boot@3.2.0"],
+        version: "2.7.18",
+        purl: ["pkg:maven/org.springframework.boot/spring-boot@2.7.18?type=jar"],
         cpe: [],
         licenses: [],
         licenses_ref_mapping: [],
