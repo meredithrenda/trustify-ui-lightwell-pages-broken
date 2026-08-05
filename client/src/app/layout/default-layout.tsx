@@ -13,9 +13,17 @@ import { Notifications } from "@app/components/Notifications";
 import { PageContentWithDrawerProvider } from "@app/components/PageDrawerContext";
 import { ReadOnlyContext } from "@app/components/ReadOnlyContext";
 import { TpaAgentLauncher, TpaAgentProvider } from "@app/components/tpa-agent";
+import {
+  isPrototypeDemoMode,
+  TourProvider,
+  TourSpotlight,
+  WorkflowTourSwitcher,
+} from "@app/prototype-tours";
 
 import { HeaderApp } from "./header";
 import { SidebarApp } from "./sidebar";
+
+import "@app/prototype-tours/workflow-tours.css";
 
 interface DefaultLayoutProps {
   children?: React.ReactNode;
@@ -28,7 +36,9 @@ export const DefaultLayout: React.FC<DefaultLayoutProps> = ({ children }) => {
     <SkipToContent href={`#${pageId}`}>Skip to content</SkipToContent>
   );
 
-  return (
+  const showWorkflowTours = isPrototypeDemoMode();
+
+  const page = (
     <Page
       masthead={<HeaderApp />}
       sidebar={<SidebarApp />}
@@ -65,5 +75,19 @@ export const DefaultLayout: React.FC<DefaultLayoutProps> = ({ children }) => {
         </PageContentWithDrawerProvider>
       </TpaAgentProvider>
     </Page>
+  );
+
+  if (!showWorkflowTours) {
+    return page;
+  }
+
+  return (
+    <TourProvider>
+      <div className="workflow-tours-shell">
+        <WorkflowTourSwitcher />
+        {page}
+        <TourSpotlight />
+      </div>
+    </TourProvider>
   );
 };

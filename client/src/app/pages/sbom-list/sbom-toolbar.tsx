@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
+  Button,
   Dropdown,
   DropdownItem,
   DropdownList,
@@ -24,6 +25,7 @@ import {
 import { Paths } from "@app/Routes";
 
 import { RunPolicyEvaluationModal } from "./components/RunPolicyEvaluationModal";
+import type { LightwellRemediationReportLocationState } from "./lightwell-remediation-report-page";
 import { SbomSearchContext } from "./sbom-context";
 
 interface SbomToolbarProps {
@@ -86,6 +88,19 @@ export const SbomToolbar: React.FC<SbomToolbarProps> = ({
     setIsRunPolicyModalOpen(true);
   };
 
+  const handleLightwellRemediationReport = () => {
+    if (!hasSelectedSboms) {
+      return;
+    }
+    const state: LightwellRemediationReportLocationState = {
+      selectedSboms: selectedItems.map((sbom) => ({
+        id: sbom.id,
+        name: sbom.name,
+      })),
+    };
+    navigate(Paths.sbomLightwellRemediationReport, { state });
+  };
+
   return (
     <>
       <Toolbar {...toolbarProps} aria-label="sbom-toolbar">
@@ -97,7 +112,7 @@ export const SbomToolbar: React.FC<SbomToolbarProps> = ({
           )}
           {showFilters && <FilterToolbar {...filterToolbarProps} />}
           {showActions && (
-            <ToolbarGroup variant="action-group-plain">
+            <ToolbarGroup variant="action-group">
               <ToolbarItem>
                 <Dropdown
                   isOpen={isActionsOpen}
@@ -169,6 +184,15 @@ export const SbomToolbar: React.FC<SbomToolbarProps> = ({
                     )}
                   </DropdownList>
                 </Dropdown>
+              </ToolbarItem>
+              <ToolbarItem>
+                <Button
+                  variant="secondary"
+                  isDisabled={!hasSelectedSboms}
+                  onClick={handleLightwellRemediationReport}
+                >
+                  Lightwell remediation report
+                </Button>
               </ToolbarItem>
             </ToolbarGroup>
           )}

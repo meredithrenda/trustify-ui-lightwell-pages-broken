@@ -35,6 +35,9 @@ const SBOMList = lazy(() => import("./pages/sbom-list"));
 const SBOMUpload = lazy(() => import("./pages/sbom-upload"));
 const SBOMScan = lazy(() => import("./pages/sbom-scan"));
 const SBOMDetails = lazy(() => import("./pages/sbom-details"));
+const LightwellRemediationReport = lazy(
+  () => import("./pages/sbom-list/lightwell-remediation-report-page"),
+);
 
 // SBOM Groups
 const SbomGroupList = lazy(() => import("./pages/sbom-groups"));
@@ -77,6 +80,7 @@ export const Paths = {
   sboms: "/sboms",
   sbomUpload: "/sboms/upload",
   sbomScan: "/sboms/scan",
+  sbomLightwellRemediationReport: "/sboms/lightwell-remediation-report",
   sbomDetails: `/sboms/:${PathParam.SBOM_ID}`,
   packages: "/packages",
   packageDetails: `/packages/:${PathParam.PACKAGE_ID}`,
@@ -212,6 +216,30 @@ export const AppRoutes = createBrowserRouter(
           ),
         },
         {
+          path: Paths.sbomScan,
+          element: (
+            <LazyRouteElement identifier="sbom-scan" component={<SBOMScan />} />
+          ),
+        },
+        {
+          path: Paths.sbomUpload,
+          element: (
+            <LazyRouteElement
+              identifier="sbom-upload"
+              component={<SBOMUpload />}
+            />
+          ),
+        },
+        {
+          path: Paths.sbomLightwellRemediationReport,
+          element: (
+            <LazyRouteElement
+              identifier="sbom-lightwell-remediation-report"
+              component={<LightwellRemediationReport />}
+            />
+          ),
+        },
+        {
           path: Paths.sbomDetails,
           element: (
             <LazyRouteElement
@@ -229,21 +257,6 @@ export const AppRoutes = createBrowserRouter(
               sbom: response?.data,
             };
           },
-        },
-        {
-          path: Paths.sbomScan,
-          element: (
-            <LazyRouteElement identifier="sbom-scan" component={<SBOMScan />} />
-          ),
-        },
-        {
-          path: Paths.sbomUpload,
-          element: (
-            <LazyRouteElement
-              identifier="sbom-upload"
-              component={<SBOMUpload />}
-            />
-          ),
         },
         {
           path: Paths.sbomGroups,
