@@ -5,18 +5,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Push the built site to the gh-pages branch. GitHub Pages serves from that
-# branch (legacy source). This avoids actions/deploy-pages, which has been
-# cancelling publishes for this repo.
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAGES: "true"
@@ -35,16 +34,21 @@ jobs:
 
       - run: npm run build -w client
 
-      # SPA fallback + skip Jekyll processing of underscore paths
       - name: Prepare Pages files
         run: |
           cp client/dist/index.html client/dist/404.html
           touch client/dist/.nojekyll
 
-      - name: Deploy to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          folder: client/dist
-          branch: gh-pages
-          clean: true
-          force: true
+          path: client/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
