@@ -24,11 +24,11 @@ interface ActionCard {
 
 const ACTIONS: ActionCard[] = [
   {
-    title: "Upload an SBOM",
+    title: "Review Lightwell remediations",
     description:
-      "Ingest a new Software Bill of Materials for automated analysis. The agent will immediately scan for known vulnerabilities and policy violations.",
-    linkTo: Paths.sbomUpload,
-    buttonLabel: "Upload SBOM",
+      "Select applications and open a Lightwell remediation report to see which packages Lightwell can help address with remediations.",
+    linkTo: Paths.sboms,
+    buttonLabel: "Review Lightwell remediations",
   },
   {
     title: "Generate vulnerability report",
